@@ -1,18 +1,29 @@
-# Build and Release Folders
-bin-debug/
-bin-release/
-[Oo]bj/
-[Bb]in/
+import pandas as pd
+import jieba
+from gensim import corpora, models
+import numpy as np
 
-# Other files and folders
-.settings/
+# 读取csv文件为DataFrame
+df = pd.read_excel('输入文件路径')
 
-# Executables
-*.swf
-*.air
-*.ipa
-*.apk
+# 对文本进行分词，并去除停用词
+stopwords = ['的', '了', '是', '我', '你', '他', '她']
+df['text_cut'] = df['text'].apply(lambda x: [word for word in jieba.cut(x) if word not in stopwords])
 
-# Project files, i.e. `.project`, `.actionScriptProperties` and `.flexProperties`
-# should NOT be excluded as they contain compiler settings and other important
-# information for Eclipse / Flash Builder.
+# 建立词袋模型
+dictionary = corpora.Dictionary(df['text_cut'])
+corpus = [dictionary.doc2bow(text_cut) for text_cut in df['text_cut']]
+
+# 确定最优主题数
+min_topics = 2
+max_topics = 10
+step = 1
+perplexity_values = []
+
+for num_topics in range(min_topics, max_topics+1, step):
+    lda_model = models.LdaModel(corpus=corpus, id2word=dictionary, num_topics=num_topics)
+    perplexity_values.append(lda_model.log_perplexity(corpus))
+
+best_num_topics = np.argmin(perplexity_values) + min_topics
+
+print("最优主题数为：", best_num_topics)
